@@ -16,6 +16,9 @@ The first step is to log in into W&B platform and create a new project. Let's co
 
 ![create_project](https://github.com/ricardosimoes00/Thesis/tree/main/Example_Images/create_project.png)
 
+![create_project](https://github.com/ricardosimoes00/Thesis/assets/93200673/332422db-fd2c-4514-a510-51d96c5b0dcc)
+
+
 Then, inside the new project, we create a new sweep and select the desired ranges and values for the different hyperparameters, like seen below
 
 ![hyperparameters_example](https://github.com/ricardosimoes00/Thesis/tree/main/Example_Images/hyperparameters_example.png)
