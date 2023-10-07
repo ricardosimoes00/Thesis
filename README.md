@@ -10,18 +10,15 @@ The folder "Models" contains the weights of the models used in this project
 
 The following example shows how to train and test a SUNN model with CNN operations
 
-Before the example, many thanks to Tsvetomila Mihaylova for making the UNN code available at: https://github.com/deep-spin/unn/tree/main
-The code for the stochastic and undirected CNN model was mainly adapted from the undirected CNN model available in the aforementioned link
-
 # 1st Step - Log in and create a new project
 
 The first step is to log in into W&B platform and create a new project. Let's consider a project titled mnist_cnn_example, for training SUNN models with cnn operations.
 
-![create_project](https://github.com/ricardosimoes00/Thesis/Example_Images/create_project.png?)
+![create_project](https://github.com/ricardosimoes00/Thesis/Example_Images/create_project.png)
 
 Then, inside the new project, we create a new sweep and select the desired ranges and values for the different hyperparameters, like seen below
 
-![hyperparameters_example](https://github.com/ricardosimoes00/Thesis/Example_Images/hyperparameters_example.png?)
+![hyperparameters_example](https://github.com/ricardosimoes00/Thesis/Example_Images/hyperparameters_example.png)
 
 ```
 !wandb agent [user name]/mnist_cnn/[sweep name]
@@ -29,5 +26,5 @@ Then, inside the new project, we create a new sweep and select the desired range
 
 This instruction can be found in W&B platform, as seen below
 
-![example](https://github.com/ricardosimoes00/Thesis/Example_Images/example.png?)
+![example](https://github.com/ricardosimoes00/Thesis/Example_Images/example.png)
 
