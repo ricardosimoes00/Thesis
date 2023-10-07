@@ -14,6 +14,7 @@ The following example shows how to train and test a SUNN model with CNN operatio
 
 The first step is to log in into W&B platform and create a new project. Let's consider a project titled mnist_cnn_example, for training SUNN models with cnn operations.
 
+![create_project](https://github.com/ricardosimoes00/Thesis/Example_Images/create_project.png?)
 
 Then, inside the new project, we create a new sweep and select the desired ranges and values for the different hyperparameters, like seen below
 
