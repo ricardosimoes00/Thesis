@@ -73,18 +73,14 @@ def get_x_y(batch, cuda):
     
 # @dataclass
 # class MNISTConvConfigSchema:
-#     project: str = 'mnist_ffnn'
-#     entity: str = 'ricardosimoes00'
 #     dropout: float = 0.3
 #     seed: int = 42
 #     lr: float = 0.01
 #     batch_size: int = 512
 #     max_epochs: int = 100
-#     unn_iter: int = 1 
-#     unn_order: str = "fb"
+#     unn_iter: int = 1
 #     unn_y_init: str = "zero"
 #     backward_loss_coef: float = 0.1 #REFAZER COM ESTE VALOR
-#     constrained: bool = True # False means we want *unn_iter* number of layers but without shared weights
 #     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 #     noise_sd: float = 0 
 #     noise_mean: float = 0
@@ -93,14 +89,12 @@ def get_x_y(batch, cuda):
 
 class FF_UNN(torch.nn.Module):
 
-    def __init__(self, k, n_classes, activation, dropout_p=0, unn_order='fb', y_init="zero", constrained=True, seed = 42):
+    def __init__(self, k, n_classes, activation, dropout_p=0, y_init="zero", seed = 42):
         super().__init__()
         self.k = k
         self.n_classes = n_classes
         self.dropout = torch.nn.Dropout(p=dropout_p)
-        self.unn_order = unn_order
         self.y_init = y_init
-        self.constrained = constrained
         self.seed = seed
         self.activation = activation
 
@@ -185,7 +179,7 @@ class FF_UNN(torch.nn.Module):
         total_entropy = []
         
         for i in range(self.k):
-            if self.constrained or i==0: # Standard training of UNN with k steps of coordinate descent
+            if i==0: # Standard training of UNN with k steps of coordinate descent
                 
                 X_flattened = torch.flatten(X, 1, 3)
                 
@@ -308,15 +302,12 @@ def main():
         batch_size = conf.batch_size
         device = conf.device
         dropout = conf.dropout
-        entity = conf.entity
         lr = conf.lr
         max_epochs = conf.max_epochs
         noise_mean = conf.noise_mean
         noise_sd = conf.noise_sd
-        project = conf.project
         seed = conf.seed
         unn_iter = conf.unn_iter
-        unn_order = conf.unn_order
         unn_y_init = conf.unn_y_init
         activation = conf.activation
 
@@ -359,9 +350,7 @@ def main():
         model = FF_UNN(k=conf['unn_iter'],
                         n_classes=output_dim,
                         dropout_p=conf['dropout'],
-                        unn_order=conf['unn_order'],
                         y_init=conf['unn_y_init'],
-                        constrained=conf['constrained'],
                         seed = conf["seed"],
                         activation = conf["activation"])
 
