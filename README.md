@@ -16,5 +16,5 @@ Invoking goals on files is straightforward, e.g.,
 pants test helloworld/greet/greeting_test.py
 ```
 
-![](https://github.com/ricardosimoes00/Thesis/Example_Images/example.png?raw=true)
+![example](https://github.com/ricardosimoes00/Thesis/Example_Images/example.png?raw=true)
 
