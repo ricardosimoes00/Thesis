@@ -98,3 +98,6 @@ shutil.make_archive("/content/wandb", 'zip', "/content/wandb")
 files.download("/content/wandb.zip")
 ```
 
+After selecting a particular configurations and a specific epoch, we can select that model for test time, obtaining predictions and evaluation metrics, or even the generation of prototypes.
+
+Refer to the following Notebook for an example: https://colab.research.google.com/drive/1f3gB1CV39Hmwv0TBC326DHNaacjoi4HL?usp=sharing
