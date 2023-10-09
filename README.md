@@ -85,11 +85,16 @@ Note that the "program" line must contain the name of the model we will use, whi
 After this, we just need to obatin the API key, which can be found in https://wandb.ai/settings and the name of the sweep we just created.
 
 Training is initiated by running the command below, replacing [user name] by the user name of the account
-and [sweep name] by the name of the sweep.
+and [sweep name] by the name of the sweep. I recommend using Google Colab since it provides a free GPU could environment, useful for training DL models.
 
 ```
 !wandb agent [user name]/mnist_cnn/[sweep name]
 ```
 
+When using Google Colab, all the weights can be saved locally using the following command:
 
+```
+shutil.make_archive("/content/wandb", 'zip', "/content/wandb")
+files.download("/content/wandb.zip")
+```
 
