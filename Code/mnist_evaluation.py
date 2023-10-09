@@ -109,7 +109,7 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_logits), dim = 0), dim = 1), dim = 1) != test_labels)
     noisy_comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_noisy_logits_50), dim = 0), dim = 1), dim = 1) != test_labels)
 
-    def calculate_auc(labels, uncertainty_scores):
+    def calculate_auroc(labels, uncertainty_scores):
         fpr, tpr, _ = roc_curve(labels, uncertainty_scores)
         roc_auc = auc(fpr, tpr)
         return roc_auc
@@ -126,10 +126,10 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     mi_scores = mi_metric(tensor_list_logits)
     jsd_scores = jsd_metric(tensor_list_logits)
     
-    max_prob_auc = calculate_auc(comparisson.cpu(), max_prob_scores.cpu())
-    entropy_auc = calculate_auc(comparisson.cpu(), entropy_scores.cpu())
-    mi_auc = calculate_auc(comparisson.cpu(), mi_scores.cpu())
-    jsd_auc = calculate_auc(comparisson.cpu(), jsd_scores.cpu())
+    max_prob_auc = calculate_auroc(comparisson.cpu(), max_prob_scores.cpu())
+    entropy_auc = calculate_auroc(comparisson.cpu(), entropy_scores.cpu())
+    mi_auc = calculate_auroc(comparisson.cpu(), mi_scores.cpu())
+    jsd_auc = calculate_auroc(comparisson.cpu(), jsd_scores.cpu())
     
     max_prob_aupr = calculate_aupr(comparisson.cpu(), max_prob_scores.cpu())
     entropy_aupr = calculate_aupr(comparisson.cpu(), entropy_scores.cpu())
@@ -165,10 +165,10 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     # print("noisy_comparisson.shape",noisy_comparisson.shape)
     # print("noisy_max_prob_scores.shape:",noisy_max_prob_scores.shape)
     
-    noisy_max_prob_auc = calculate_auc(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
-    noisy_entropy_auc = calculate_auc(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
-    noisy_mi_auc = calculate_auc(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
-    noisy_jsd_auc = calculate_auc(noisy_comparisson.cpu(), noisy_jsd_scores.cpu())
+    noisy_max_prob_auc = calculate_auroc(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
+    noisy_entropy_auc = calculate_auroc(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
+    noisy_mi_auc = calculate_auroc(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+    noisy_jsd_auc = calculate_auroc(noisy_comparisson.cpu(), noisy_jsd_scores.cpu())
 
     noisy_max_prob_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
     noisy_entropy_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
@@ -202,30 +202,265 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
 
     #missclass or OOD, metrica, pr ou roc
 
-    experiment_choice = input("Enter 1 for misclassification experiment, 2 for OOD detection experiment: ")
-    
-    elif choice == 3:
-        selected_variable = variable_C
-    elif choice == 4:
-        selected_variable = variable_D
+    # Prompt the user for the experiment choice
+    # Prompt the user for the experiment choice
+    experiment_choice = (input("Enter 1 for Misclassification Experiment or 2 for OOD Detection Experiment: "))
+    threshold = float(input("Enter threshold value: "))
+    print("threshold value selected:", threshold)
+
+    if experiment_choice == "1" or experiment_choice == "2":
+
+        curve_type_choice = (input("Enter 1 for PR Curve or 2 for ROC Curve: "))
+
+        if curve_type_choice == '1' or curve_type_choice == '2':
+
+            metric_choice = (input("Enter 1 for Entropy, 2 for MI, 3 for JSD, or 4 for Max Prob: "))
+
+            if metric_choice in ('1', '2', '3', '4'):
+                if experiment_choice == 1:  #missclass
+                    if curve_type_choice == '1': #PR curve
+                        if metric_choice == '1':
+                            precision, recall, thresholds = precision_recall_curve(comparisson.cpu(), entropy_scores.cpu())
+
+                        elif metric_choice == '2':
+                            precision, recall, thresholds = precision_recall_curve(comparisson.cpu(), mi_scores.cpu())
+
+                        elif metric_choice == '3':
+                            precision, recall, thresholds = precision_recall_curve(comparisson.cpu(), jsd_scores.cpu())
+
+                        elif metric_choice == '4':
+                            precision, recall, thresholds = precision_recall_curve(comparisson.cpu(), max_prob_scores.cpu())
+                
+                    elif curve_type_choice == '2': #Roc curve
+
+                        if metric_choice == '1':
+                            fpr, tpr, thresholds = roc_curve(comparisson.cpu(), entropy_scores.cpu())
+
+                        elif metric_choice == '2':
+                            fpr, tpr, thresholds = roc_curve(comparisson.cpu(), mi_scores.cpu())
+
+                        elif metric_choice == '3':
+                            fpr, tpr, thresholds = roc_curve(comparisson.cpu(), jsd_scores.cpu())
+
+                        elif metric_choice == '4':
+                            fpr, tpr, thresholds = roc_curve(comparisson.cpu(), max_prob_scores.cpu())
+
+
+                        # Calculate the AUPR
+                        aupr = auc(recall, precision)
+
+                        # Plot the PR curve
+                        plt.figure(figsize=(8, 6))
+                        plt.plot(recall, precision, lw=2)
+                        plt.xlabel('Recall')
+                        plt.ylabel('Precision')
+                        plt.title('Precision-Recall Curve for FFNN-type SUNN')
+                        plt.grid(True)
+                        plt.legend()
+                        plt.savefig('precision_recall_curve.png')
+                        plt.show()
+
+                        # Print the AUPR
+                        print("AUPR:", aupr)
+                        
+                        binary_predictions = [1 if p >= threshold else 0 for p in noisy_mi_scores.cpu()]
+                        confusion = confusion_matrix(noisy_comparisson.cpu(), binary_predictions)
+                        cmap = plt.matplotlib.colors.ListedColormap(['grey', 'grey', 'grey', 'grey'])
+                        class_labels = ["Negative", "Positive"]  # Horizontal labels
+
+                        # Create a confusion matrix plot without the color scale
+                        plt.figure(figsize=(6, 4))
+                        plt.imshow(confusion, interpolation='nearest', cmap=cmap, vmin=-1, vmax=1)
+                        plt.title(f'Confusion Matrix for Threshold={threshold}')
+                        tick_marks = np.arange(len(class_labels))
+                        plt.xticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.yticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.xlabel('Predicted')
+                        plt.ylabel('Actual')
+                        for i in range(len(class_labels)):
+                            for j in range(len(class_labels)):
+                                text_color = "black" if confusion[i, j] == 0 else "white"
+                                plt.text(j, i, format(confusion[i, j], 'd'), horizontalalignment="center", color=text_color)
+                        plt.savefig('cm.png')
+                        plt.show()
+
+                        # Calculate the AUC
+                        roc_auc = auc(fpr, tpr)
+
+                        # Plot the ROC curve
+                        plt.figure(figsize=(8, 6))
+                        plt.plot(fpr, tpr, lw=2)
+                        plt.xlabel('False Positive Rate')
+                        plt.ylabel('True Positive Rate')
+                        plt.title('Receiver Operating Characteristic (ROC) Curve for FFNN-type SUNN')
+                        plt.grid(True)
+                        plt.legend()
+                        plt.savefig('roc_curve.png')
+                        plt.show()
+
+                        # Print the AUC
+                        print("ROC AUC:", roc_auc)
+
+
+                        # Optionally, if you still want to calculate confusion matrix at a specific threshold
+                        binary_predictions = [1 if p >= threshold else 0 for p in noisy_mi_scores.cpu()]
+
+                        # Calculate the confusion matrix
+                        confusion = confusion_matrix(noisy_comparisson.cpu(), binary_predictions)
+                        
+                        # Define class labels for your problem
+                        class_labels = ["Negative", "Positive"]  # Horizontal labels
+                        # Modify class_labels based on your actual class labels
+
+                        # Define threshold value in scientific notation
+                        threshold_scientific = format(threshold, ".2e")
+
+                        # Create a custom colormap where everything is grey
+                        cmap = plt.matplotlib.colors.ListedColormap(['grey', 'grey', 'grey', 'grey'])
+
+                        # Create a confusion matrix plot without the color scale
+                        plt.figure(figsize=(6, 4))
+                        plt.imshow(confusion, interpolation='nearest', cmap=cmap, vmin=-1, vmax=1)
+                        plt.title(f'Confusion Matrix for Threshold={threshold_scientific}')
+                        tick_marks = np.arange(len(class_labels))
+                        plt.xticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.yticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.xlabel('Predicted')
+                        plt.ylabel('Actual')
+                        for i in range(len(class_labels)):
+                            for j in range(len(class_labels)):
+                                text_color = "black" if confusion[i, j] == 0 else "white"
+                                plt.text(j, i, format(confusion[i, j], 'd'), horizontalalignment="center", color=text_color)
+                        plt.savefig('cm.png')
+                        plt.show()
+
+                elif experiment_choice == 2:
+                    if curve_type_choice == '1': #PR curve
+                        if metric_choice == '1':
+                            precision, recall, thresholds = precision_recall_curve(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
+
+                        elif metric_choice == '2':
+                            precision, recall, thresholds = precision_recall_curve(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+
+                        elif metric_choice == '3':
+                            precision, recall, thresholds = precision_recall_curve(noisy_comparisson.cpu(), noisy_jsd_scores.cpu())
+
+                        elif metric_choice == '4':
+                            precision, recall, thresholds = precision_recall_curve(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
+                
+                        # Calculate the AUPR
+                        aupr = auc(recall, precision)
+
+                        # Plot the PR curve
+                        plt.figure(figsize=(8, 6))
+                        plt.plot(recall, precision, lw=2)
+                        plt.xlabel('Recall')
+                        plt.ylabel('Precision')
+                        plt.title('Precision-Recall Curve for FFNN-type SUNN')
+                        plt.grid(True)
+                        plt.legend()
+                        plt.savefig('precision_recall_curve.png')
+                        plt.show()
+
+                        # Print the AUPR
+                        print("AUPR:", aupr)
+                        
+                        binary_predictions = [1 if p >= threshold else 0 for p in noisy_mi_scores.cpu()]
+                        confusion = confusion_matrix(noisy_comparisson.cpu(), binary_predictions)
+                        cmap = plt.matplotlib.colors.ListedColormap(['grey', 'grey', 'grey', 'grey'])
+                        class_labels = ["Negative", "Positive"]  # Horizontal labels
+
+                        # Create a confusion matrix plot without the color scale
+                        plt.figure(figsize=(6, 4))
+                        plt.imshow(confusion, interpolation='nearest', cmap=cmap, vmin=-1, vmax=1)
+                        plt.title(f'Confusion Matrix for Threshold={threshold}')
+                        tick_marks = np.arange(len(class_labels))
+                        plt.xticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.yticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.xlabel('Predicted')
+                        plt.ylabel('Actual')
+                        for i in range(len(class_labels)):
+                            for j in range(len(class_labels)):
+                                text_color = "black" if confusion[i, j] == 0 else "white"
+                                plt.text(j, i, format(confusion[i, j], 'd'), horizontalalignment="center", color=text_color)
+                        plt.savefig('cm.png')
+                        plt.show()
+
+
+                    elif curve_type_choice == '2': #Roc curve
+
+                        if metric_choice == '1':
+                            fpr, tpr, thresholds = roc_curve(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
+
+                        elif metric_choice == '2':
+                            fpr, tpr, thresholds = roc_curve(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+
+                        elif metric_choice == '3':
+                            fpr, tpr, thresholds = roc_curve(noisy_comparisson.cpu(), noisy_jsd_scores.cpu())
+
+                        elif metric_choice == '4':
+                            fpr, tpr, thresholds = roc_curve(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
+
+                        # Calculate the AUC
+                        roc_auc = auc(fpr, tpr)
+
+                        # Plot the ROC curve
+                        plt.figure(figsize=(8, 6))
+                        plt.plot(fpr, tpr, lw=2)
+                        plt.xlabel('False Positive Rate')
+                        plt.ylabel('True Positive Rate')
+                        plt.title('Receiver Operating Characteristic (ROC) Curve for FFNN-type SUNN')
+                        plt.grid(True)
+                        plt.legend()
+                        plt.savefig('roc_curve.png')
+                        plt.show()
+
+                        # Print the AUC
+                        print("ROC AUC:", roc_auc)
+
+
+                        # Optionally, if you still want to calculate confusion matrix at a specific threshold
+                        binary_predictions = [1 if p >= threshold else 0 for p in noisy_mi_scores.cpu()]
+
+                        # Calculate the confusion matrix
+                        confusion = confusion_matrix(noisy_comparisson.cpu(), binary_predictions)
+                        
+                        # Define class labels for your problem
+                        class_labels = ["Negative", "Positive"]  # Horizontal labels
+                        # Modify class_labels based on your actual class labels
+
+                        # Define threshold value in scientific notation
+                        threshold_scientific = format(threshold, ".2e")
+
+                        # Create a custom colormap where everything is grey
+                        cmap = plt.matplotlib.colors.ListedColormap(['grey', 'grey', 'grey', 'grey'])
+
+                        # Create a confusion matrix plot without the color scale
+                        plt.figure(figsize=(6, 4))
+                        plt.imshow(confusion, interpolation='nearest', cmap=cmap, vmin=-1, vmax=1)
+                        plt.title(f'Confusion Matrix for Threshold={threshold_scientific}')
+                        tick_marks = np.arange(len(class_labels))
+                        plt.xticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.yticks(tick_marks, class_labels)  # Horizontal class labels
+                        plt.xlabel('Predicted')
+                        plt.ylabel('Actual')
+                        for i in range(len(class_labels)):
+                            for j in range(len(class_labels)):
+                                text_color = "black" if confusion[i, j] == 0 else "white"
+                                plt.text(j, i, format(confusion[i, j], 'd'), horizontalalignment="center", color=text_color)
+                        plt.savefig('cm.png')
+                        plt.show()
+
+
+
+
+            else:
+                print("Invalid metric choice. Please enter a valid option (1, 2, 3, or 4).")
+        else:
+            print("Invalid curve type choice. Please enter 1 for PR Curve or 2 for ROC Curve.")
     else:
-        print("Invalid choice. Please enter a valid option (1, 2, 3, or 4).")
+        print("Invalid experiment choice. Please enter 1 for Misclassification Experiment or 2 for OOD Detection Experiment.")
 
-    choice = input("Enter 1 for mxa prob, 2 for entropy, 3 for MI, or 4 for JSD: ")
-
-    if choice == 1:
-        selected_variable = variable_A
-    elif choice == 2:
-        selected_variable = variable_B
-    elif choice == 3:
-        selected_variable = variable_C
-    elif choice == 4:
-        selected_variable = variable_D
-    else:
-        print("Invalid choice. Please enter a valid option (1, 2, 3, or 4).")
-
-    # Now, you can use the selected_variable in the rest of your script
-    print("Selected variable:", selected_variable)
 
     fpr, tpr, thresholds = roc_curve(comparisson.cpu(), mi_scores.cpu())
 
