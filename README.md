@@ -20,9 +20,17 @@ Then, inside the new project, we create a new sweep and select the desired range
 
 ![hyperparameters_example](https://github.com/ricardosimoes00/Thesis/assets/93200673/db47b590-17ed-413e-a281-36a82bcd4e3d)
 
+
+After this, we just need to obatin the API key, which can be found in https://wandb.ai/settings and the name of the sweep we just created.
+
+Training is initiated by running the command below, replacing [user name] by the user name of the account
+and [sweep name] by the name of the sweep.
+
 ```
 !wandb agent [user name]/mnist_cnn/[sweep name]
 ```
+
+
 
 This instruction can be found in W&B platform, as seen below
 
