@@ -13,7 +13,7 @@ import numpy as np
 import argparse
 import ast
 import sys
-from sklearn.metrics import roc_curve, auc, precision_recall_curve, roc_auc_score
+from sklearn.metrics import roc_curve, auc, precision_recall_curve, roc_auc_score, average_precision_score, confusion_matrix
 
 def variance(tensor_list_logits):
 
@@ -27,23 +27,12 @@ def variance(tensor_list_logits):
 
 def mean_accuracy(tensor_list_logits, test_labels):
   
-  tensor_logits = torch.stack(tensor_list_logits)
+  tensor_logits = torch.stack(tensor_list_logits) 
   model_probabilities = torch.softmax(tensor_logits, dim = 2)
   average_probabilities = torch.mean(model_probabilities, dim = 0)
   model_predictions = torch.argmax(average_probabilities, dim = 1)
   
-  return torch.sum( model_predictions == test_labels)/len(test_labels) * 100
-
-def entropy_metric(tensor_list_logits):
-  
-  tensor_logits = torch.stack(tensor_list_logits)
-  model_probabilities = torch.softmax(tensor_logits, dim = 2)
-  average_probailities = torch.mean(model_probabilities, dim = 0) 
-  average_probailities[average_probailities == 0] = 1
-  transformed_tensor = torch.log(average_probailities)*average_probailities 
-  entropy_sum = torch.sum(transformed_tensor, dim=1)
-
-  return -entropy_sum
+  return torch.sum( model_predictions == (test_labels))/len(test_labels) * 100
 
 def jsd_metric(tensor_list_logits): 
 
@@ -72,17 +61,29 @@ def max_probability_metric(tensor_list_logits):
   
   return max_p_values
 
+def entropy_metric(tensor_list_logits):
+  
+  tensor_logits = torch.stack(tensor_list_logits)
+  model_probabilities = torch.softmax(tensor_logits, dim = 2)
+  average_probailities = torch.mean(model_probabilities, dim = 0) 
+  average_probailities[average_probailities == 0] = 1
+  transformed_tensor = torch.log(average_probailities)*average_probailities 
+  entropy_sum = torch.sum(transformed_tensor, dim=1)
+
+  return -entropy_sum
+
 def mi_metric(tensor_list_logits):
 
-  expected_entropy = entropy_metric(tensor_list_logits)
+  expected_of_average = entropy_metric(tensor_list_logits)
 
-  prob = torch.nn.functional.softmax(torch.stack(tensor_list_logits), dim = 2) #[50, 10000, 10]
-  mean_prob = torch.mean(prob, dim  = 0) #[10000, 10]
-  mean_prob[mean_prob == 0] = 1 #[10000, 10]
-  transformed_tensor = torch.log(mean_prob)*mean_prob #[10000, 10]
-  entropy_sum = -torch.sum(transformed_tensor, dim=1)
+  tensor_logits = torch.stack(tensor_list_logits)
+  prob = torch.softmax(tensor_logits, dim = 2) #[50, 10000, 10]
+  prob[prob == 0] = 1
+  transformed_tensor = torch.log(prob)*prob #[10000, 10]
+  entropy = -torch.sum(transformed_tensor, dim=2)
+  average_entropy = torch.mean(entropy, dim  = 0)
 
-  return entropy_sum - expected_entropy
+  return expected_of_average - average_entropy
 
 def set_seed(seed):
     torch.manual_seed(seed)
@@ -91,7 +92,7 @@ def set_seed(seed):
     torch.backends.cudnn.deterministic = True
     torch.backends.cudnn.benchmark = False
 
-def main(tensor_list_logits, tensor_list_noisy_logits_25, tensor_list_noisy_logits_50, tensor_list_noisy_logits_75, test_labels):
+def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
 
     from sklearn.metrics import precision_recall_curve, auc
     set_seed(42)
@@ -105,8 +106,8 @@ def main(tensor_list_logits, tensor_list_noisy_logits_25, tensor_list_noisy_logi
     acc = mean_accuracy(tensor_list_logits, test_labels)
     noisy_acc_50 = mean_accuracy(tensor_list_noisy_logits_50, test_labels)
  
-    comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_logits), dim = 0), dim = 1), dim = 1) == test_labels)
-    noisy_comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_noisy_logits_50), dim = 0), dim = 1), dim = 1) == test_labels)
+    comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_logits), dim = 0), dim = 1), dim = 1) != test_labels)
+    noisy_comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_noisy_logits_50), dim = 0), dim = 1), dim = 1) != test_labels)
 
     def calculate_auc(labels, uncertainty_scores):
         fpr, tpr, _ = roc_curve(labels, uncertainty_scores)
@@ -119,100 +120,155 @@ def main(tensor_list_logits, tensor_list_noisy_logits_25, tensor_list_noisy_logi
         return aupr
 
 
-    mi_scores = mi_metric(tensor_list_logits)
+    #Missclassification experiment 
     max_prob_scores = max_probability_metric(tensor_list_logits)
     entropy_scores = entropy_metric(tensor_list_logits)
-    mi_auc = calculate_auc(comparisson.cpu(), mi_scores.cpu())
+    mi_scores = mi_metric(tensor_list_logits)
+    jsd_scores = jsd_metric(tensor_list_logits)
+    
     max_prob_auc = calculate_auc(comparisson.cpu(), max_prob_scores.cpu())
     entropy_auc = calculate_auc(comparisson.cpu(), entropy_scores.cpu())
-    mi_aupr = calculate_aupr(comparisson.cpu(), mi_scores.cpu())
+    mi_auc = calculate_auc(comparisson.cpu(), mi_scores.cpu())
+    jsd_auc = calculate_auc(comparisson.cpu(), jsd_scores.cpu())
+    
     max_prob_aupr = calculate_aupr(comparisson.cpu(), max_prob_scores.cpu())
     entropy_aupr = calculate_aupr(comparisson.cpu(), entropy_scores.cpu())
+    mi_aupr = calculate_aupr(comparisson.cpu(), mi_scores.cpu())
+    jsd_aupr = calculate_aupr(comparisson.cpu(), jsd_scores.cpu())
+       
 
-    noisy_mi_scores = mi_metric(tensor_list_noisy_logits_50)
-    noisy_max_prob_scores = max_probability_metric(tensor_list_noisy_logits_50)
-    noisy_entropy_scores = entropy_metric(tensor_list_noisy_logits_50)
-    noisy_mi_auc = calculate_auc(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+    tensor_list_noisy_logits_50_merged = torch.cat((torch.stack(tensor_list_noisy_logits_50),torch.stack(tensor_list_logits)), dim = 1)
+    num_ones = torch.stack(tensor_list_noisy_logits_50).shape[1]
+    num_zeros = torch.stack(tensor_list_logits).shape[1]
+    ones_tensor = torch.ones(num_ones)
+    zeros_tensor = torch.zeros(num_zeros)
+    noisy_comparisson = torch.cat((ones_tensor, zeros_tensor), dim=0)
+    
+
+    # print(num_ones)
+    # print(num_zeros)
+    # print(noisy_comparisson.shape)
+
+    tensor_list_noisy_logits_50_merged = torch.unbind(tensor_list_noisy_logits_50_merged, dim = 0)
+    # print(len(tensor_list_noisy_logits_50_merged))
+
+    #OOD experiment   
+    # print("tensor_list_noisy_logits_50_merged.shape",torch.stack(tensor_list_noisy_logits_50_merged).shape)
+    # print("tensor_list_logits.shape",torch.stack(tensor_list_logits).shape)
+    noisy_max_prob_scores = max_probability_metric(tensor_list_noisy_logits_50_merged)
+    noisy_entropy_scores = entropy_metric(tensor_list_noisy_logits_50_merged)
+    noisy_mi_scores = mi_metric(tensor_list_noisy_logits_50_merged)
+    noisy_jsd_scores = jsd_metric(tensor_list_noisy_logits_50_merged)
+    
+    # print("comparisson.shape",comparisson.shape)
+    # print("max_prob_scores.shape",max_prob_scores.shape)
+    # print("noisy_comparisson.shape",noisy_comparisson.shape)
+    # print("noisy_max_prob_scores.shape:",noisy_max_prob_scores.shape)
+    
     noisy_max_prob_auc = calculate_auc(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
     noisy_entropy_auc = calculate_auc(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
-    noisy_mi_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+    noisy_mi_auc = calculate_auc(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+    noisy_jsd_auc = calculate_auc(noisy_comparisson.cpu(), noisy_jsd_scores.cpu())
+
     noisy_max_prob_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_max_prob_scores.cpu())
     noisy_entropy_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_entropy_scores.cpu())
+    noisy_mi_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_mi_scores.cpu())
+    noisy_jsd_aupr = calculate_aupr(noisy_comparisson.cpu(), noisy_jsd_scores.cpu())
 
-
+    print("Missclassification detection experiment")
     print("Mean Acc:", acc.item())
-    print("Mean Entropy:", torch.mean(entropy).item())
-    print("Median Entropy:", torch.median(entropy).item())
-    print("Mean JSD:", torch.mean(jsd).item())
-    print("Median JSD:", torch.median(jsd).item())
-    print("Mean Variance:", torch.mean(variance(tensor_list_logits)).item())
-    print("Median Variance:", torch.median(variance(tensor_list_logits)).item())
-    print(f'MI AUROC: {mi_auc:.4f}')
+    
     print(f'Max Probability AUROC: {max_prob_auc:.4f}')
     print(f'Entropy AUROC: {entropy_auc:.4f}')
-    print(f'MI AUPR: {mi_aupr:.4f}')
+    print(f'MI AUROC: {mi_auc:.4f}')
+    print(f'JSD AUROC: {jsd_auc:.4f}')
+    
     print(f'Max Probability AUPR: {max_prob_aupr:.4f}')
     print(f'Entropy AUPR: {entropy_aupr:.4f}')
+    print(f'MI AUPR: {mi_aupr:.4f}')
+    print(f'JSD AUPR: {jsd_aupr:.4f}')
     print()
-    # print(torch.mean(entropy).shape)
-    # print(torch.mean(entropy).shape)
-
-    # print("Mean Acc:", noisy_acc_25.item())
-    # print("Mean Entropy:", torch.mean(noisy_entropy_25).item())
-    # print("Median Entropy:", torch.median(noisy_entropy_25).item())
-    # print("Mean JSD:", torch.mean(noisy_jsd_25).item())
-    # print("Median JSD:", torch.median(noisy_jsd_25).item())
-    # print("Mean Variance:", torch.mean(variance(tensor_list_noisy_logits_25)).item())
-    # print("Median Variance:", torch.median(variance(tensor_list_noisy_logits_25)).item())
-    # print()
-
-    print("Mean Acc:", noisy_acc_50.item())
-    print("Mean Entropy:", torch.mean(noisy_entropy_50).item())
-    print("Median Entropy:", torch.median(noisy_entropy_50).item())
-    print("Mean JSD:", torch.mean(noisy_jsd_50).item())
-    print("Median JSD:", torch.median(noisy_jsd_50).item())
-    print("Mean Variance:", torch.mean(variance(tensor_list_noisy_logits_50)).item())
-    print("Median Variance:", torch.median(variance(tensor_list_noisy_logits_50)).item())
-    print(f'MI AUROC: {noisy_mi_auc:.4f}')
+    
+    print("OOD detection experiment")
     print(f'Max Probability AUROC: {noisy_max_prob_auc:.4f}')
     print(f'Entropy AUROC: {noisy_entropy_auc:.4f}')
-    print(f'MI AUPR: {noisy_mi_aupr:.4f}')
+    print(f'MI AUROC: {noisy_mi_auc:.4f}')
+    print(f'JSD AUROC: {noisy_jsd_auc:.4f}')
     print(f'Max Probability AUPR: {noisy_max_prob_aupr:.4f}')
     print(f'Entropy AUPR: {noisy_entropy_aupr:.4f}')
+    print(f'MI AUPR: {noisy_mi_aupr:.4f}')
+    print(f'JSD AUPRR: {noisy_jsd_aupr:.4f}')
     print()
 
-    # print("Mean Acc:", noisy_acc_75.item())
-    # print("Mean Entropy:", torch.mean(noisy_entropy_75).item())
-    # print("Median Entropy:", torch.median(noisy_entropy_75).item())
-    # print("Mean JSD:", torch.mean(noisy_jsd_75).item())
-    # print("Median JSD:", torch.median(noisy_jsd_75).item())
-    # print("Mean Variance:", torch.mean(variance(tensor_list_noisy_logits_75)).item())
-    # print("Median Variance:", torch.median(variance(tensor_list_noisy_logits_75)).item())
-    # print()
+    #missclass or OOD, metrica, pr ou roc
 
-    # print("Mean noisy-Acc (sd = 0.25):", noisy_acc_25.item())
-    # print("Mean noisy-Acc (sd = 0.50):", noisy_acc_50.item())
-    # print("Mean noisy-Acc (sd = 0.75):", noisy_acc_75.item())
+    experiment_choice = input("Enter 1 for misclassification experiment, 2 for OOD detection experiment: ")
+    
+    elif choice == 3:
+        selected_variable = variable_C
+    elif choice == 4:
+        selected_variable = variable_D
+    else:
+        print("Invalid choice. Please enter a valid option (1, 2, 3, or 4).")
 
-    # simplex_plot(tensor_list_logits)
-    # simplex_plot(tensor_list_noisy_logits_25)
-    # simplex_plot(tensor_list_noisy_logits_50)
-    # simplex_plot(tensor_list_noisy_logits_75)
+    choice = input("Enter 1 for mxa prob, 2 for entropy, 3 for MI, or 4 for JSD: ")
+
+    if choice == 1:
+        selected_variable = variable_A
+    elif choice == 2:
+        selected_variable = variable_B
+    elif choice == 3:
+        selected_variable = variable_C
+    elif choice == 4:
+        selected_variable = variable_D
+    else:
+        print("Invalid choice. Please enter a valid option (1, 2, 3, or 4).")
+
+    # Now, you can use the selected_variable in the rest of your script
+    print("Selected variable:", selected_variable)
+
+    fpr, tpr, thresholds = roc_curve(comparisson.cpu(), mi_scores.cpu())
+
+    # Calculate the AUC
+    roc_auc = auc(fpr, tpr)
+
+   # Plot the ROC curve
+    plt.figure(figsize=(8, 6))
+    plt.plot(fpr, tpr, lw=2)
+    plt.xlabel('False Positive Rate')
+    plt.ylabel('True Positive Rate')
+    plt.title('Receiver Operating Characteristic (ROC) Curve for FFNN-type SUNN')
+    plt.grid(True)
+   
+    plt.legend()
+    plt.savefig('roc_curve.png')
+    plt.show()
+
+    # Print the AUC
+    print("ROC AUC:", roc_auc)
+
+
+    # Optionally, if you still want to calculate confusion matrix at a specific threshold
+    threshold = 0.9
+    binary_predictions = [1 if p >= threshold else 0 for p in mi_scores.cpu()]
+
+    # Calculate the confusion matrix
+    confusion = confusion_matrix(comparisson.cpu(), binary_predictions)
+    tn, fp, fn, tp = confusion.ravel()
+
+    # Print the confusion matrix
+    print("Confusion Matrix:")
+    print(confusion)
+
 
 if __name__ == '__main__':
 
     tensor_list_logits_path = sys.argv[1]
-    tensor_list_noisy_logits_25_path = sys.argv[2]
-    tensor_list_noisy_logits_50_path = sys.argv[3]
-    tensor_list_noisy_logits_75_path = sys.argv[4]
-    test_labels_path = sys.argv[5]
-    
-
+    tensor_list_noisy_logits_50_path = sys.argv[2]
+    test_labels_path = sys.argv[3]
+  
     tensor_list_logits = torch.load(tensor_list_logits_path)
-    test_labels = torch.load(test_labels_path)
-    tensor_list_noisy_logits_25 = torch.load(tensor_list_noisy_logits_25_path)
+    test_labels = torch.load(test_labels_path).to("cuda")
     tensor_list_noisy_logits_50 = torch.load(tensor_list_noisy_logits_50_path)
-    tensor_list_noisy_logits_75 = torch.load(tensor_list_noisy_logits_75_path)
 
-
-    main(tensor_list_logits, tensor_list_noisy_logits_25, tensor_list_noisy_logits_50, tensor_list_noisy_logits_75, test_labels)	
+    main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels)	

@@ -265,8 +265,8 @@ class ConvUNN(torch.nn.Module):
 
                 Y_logits = self._update_Y(H2, b3_stochastic)
                 Y = torch.softmax(Y_logits, dim=-1)
-
-		H2 = self._update_H2(H1, Y, b2_stochastic)
+                
+                H2 = self._update_H2(H1, Y, b2_stochastic)
 
                 if self.activation == "relu":
                   H2 = torch.relu(H2)
@@ -315,7 +315,7 @@ class ConvUNN(torch.nn.Module):
                 # print("H1.shape:",H1.shape)
                 # print("torch.sum(conv_result * H1, dim=(1, 2, 3)):",torch.sum(torch.conv2d(X, self.W1, stride=self.stride) * H1, dim=(1, 2, 3)).shape)              
   
-        print(total_energy)                 
+        # print(total_energy)                 
         return Y_logits, total_energy, total_entropy
 
     def backward(self, y, b1_stochastic, b2_stochastic, k=None, return_all_x=True):
