@@ -22,7 +22,7 @@ Then, inside the new project, we create a new sweep and select the desired range
 
 Here is an example of a hyperparameter list configuration:
 
-'''
+```
 method: random
 parameters:
   activation:
@@ -77,7 +77,7 @@ parameters:
       - rand
       - zero
 program: mnist_conv_stochastic.py
-'''
+```
 
 Note that the "program" line must contain the name of the model we will use, which in this case is the SUNN with CNN operations
 
