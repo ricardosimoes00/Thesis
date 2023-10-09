@@ -20,6 +20,67 @@ Then, inside the new project, we create a new sweep and select the desired range
 
 ![hyperparameters_example](https://github.com/ricardosimoes00/Thesis/assets/93200673/db47b590-17ed-413e-a281-36a82bcd4e3d)
 
+Here is an example of a hyperparameter list configuration:
+
+'''
+method: random
+parameters:
+  activation:
+    values:
+      - relu
+      - tanh
+  backward_loss_coef:
+    distribution: uniform
+    max: 1
+    min: 0.01
+  batch_size:
+    values:
+      - 128
+      - 256
+      - 512
+  constrained:
+    values:
+      - "True"
+  device:
+    values:
+      - cpu
+  dropout:
+    distribution: uniform
+    max: 0.5
+    min: 0.1
+  lr:
+    distribution: uniform
+    max: 0.01
+    min: 0.0005
+  max_epochs:
+    values:
+      - 70
+  noise_mean:
+    values:
+      - 0
+  noise_sd:
+    distribution: uniform
+    max: 1
+    min: 0
+  seed:
+    values:
+      - 42
+  unn_iter:
+    values:
+      - 1
+      - 3
+      - 5
+      - 10
+  unn_y_init:
+    values:
+      - uniform
+      - rand
+      - zero
+program: mnist_conv_stochastic.py
+'''
+
+Note that the "program" line must contain the name of the model we will use, which in this case is the SUNN with CNN operations
+
 
 After this, we just need to obatin the API key, which can be found in https://wandb.ai/settings and the name of the sweep we just created.
 
@@ -31,8 +92,4 @@ and [sweep name] by the name of the sweep.
 ```
 
 
-
-This instruction can be found in W&B platform, as seen below
-
-![example](https://github.com/ricardosimoes00/Thesis/tree/main/Example_Images/example.png)
 
