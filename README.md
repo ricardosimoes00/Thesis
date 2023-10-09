@@ -1,7 +1,7 @@
 # Thesis
 
 This repository is the official repository for my Master Thesis titled Stochastic Undirected Neural Networks.
-More information about the work developed can be found in the documents "Tese.pdf" and "Extended_Abstract.pdf".
+More information about the work developed can be found in the documents "Thesis.pdf" and "Extended_Abstract.pdf".
 
 ## Content
 
@@ -10,7 +10,7 @@ The folder "Models" contains the weights of the models used in this project
 
 The following example shows how to train and test a SUNN model with CNN operations
 
-# 1st Step - Log in and create a new project
+# SUNN application example
 
 The first step is to log in into W&B platform and create a new project. Let's consider a project titled mnist_cnn_example, for training SUNN models with cnn operations.
 
@@ -100,4 +100,4 @@ files.download("/content/wandb.zip")
 
 After selecting a particular configurations and a specific epoch, we can select that model for test time, obtaining predictions and evaluation metrics, or even the generation of prototypes.
 
-Refer to the following Notebook for an example: https://colab.research.google.com/drive/1f3gB1CV39Hmwv0TBC326DHNaacjoi4HL?usp=sharing
+Refer to the following Notebook for an example: https://colab.research.google.com/drive/1lsnzG66McNaHUL3ZGaj7BNLhrhZxuyxp?usp=sharing
