@@ -15,7 +15,7 @@ The following example shows how to train and test a SUNN model with CNN operatio
 The first step is to log in into W&B platform and create a new project. Let's consider a project titled mnist_cnn_example, for training SUNN models with cnn operations.
 
 ![create_project](https://github.com/ricardosimoes00/Thesis/tree/main/Example_Images/create_project.png)
-
+	
 ![create_project](https://github.com/ricardosimoes00/Thesis/assets/93200673/332422db-fd2c-4514-a510-51d96c5b0dcc)
 
 
