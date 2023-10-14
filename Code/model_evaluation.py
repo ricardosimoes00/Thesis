@@ -56,9 +56,24 @@ def jsd_metric(tensor_list_logits):
 def max_probability_metric(tensor_list_logits):
 
   tensor_logits = torch.stack(tensor_list_logits)
+  print("tensor_logits.shape:",tensor_logits.shape)
   model_probabilities = torch.softmax(tensor_logits, dim = 2)
+  print("model_probabilities.shape:",model_probabilities.shape)
   average_probs = torch.mean(model_probabilities, dim = 0)
+  print("average_probs.shape:",average_probs.shape)
   max_p_values, _ = torch.max(average_probs, dim=1)
+  print("max_p_values.shape:",max_p_values.shape)
+  print("max_p_values:",max_p_values)
+  print("len(torch.unique(max_p_values)):",torch.unique(max_p_values))
+
+  unique_elements, counts = torch.unique(max_p_values, return_counts=True)
+
+  # Create a dictionary to store the counts for each unique element
+  element_counts = {}
+  for unique_element, count in zip(unique_elements, counts):
+      element_counts[unique_element.item()] = count.item()
+
+  print("Unique elements and their counts:", element_counts)
   
   return max_p_values
 
@@ -152,6 +167,39 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
 
     tensor_list_noisy_logits_50_merged = torch.unbind(tensor_list_noisy_logits_50_merged, dim = 0)
     # print(len(tensor_list_noisy_logits_50_merged))
+
+    # Create the plot1
+    plt.figure(figsize=(8, 6))
+    plt.scatter(max_prob_scores.cpu().numpy(), jsd_scores.cpu().numpy(), s=10)  # s controls the marker size
+
+    # Add labels and a title
+    plt.xlabel('max_probability_metric')
+    plt.ylabel('jsd_metric')
+    plt.title('Comparison of max_probability_metric and jsd_metric')
+
+    plt.savefig('comparison_plot1.png')
+
+    # Create the plot2
+    plt.figure(figsize=(8, 6))
+    plt.scatter(max_prob_scores.cpu().numpy(), entropy_scores.cpu().numpy(), s=10)  # s controls the marker size
+
+    # Add labels and a title
+    plt.xlabel('max_probability_metric')
+    plt.ylabel('entropy_scores')
+    plt.title('Comparison of max_probability_metric and entropy_scores')
+
+    plt.savefig('comparison_plot2.png')
+
+    # Create the plot3
+    plt.figure(figsize=(8, 6))
+    plt.scatter(max_prob_scores.cpu().numpy(), mi_scores.cpu().numpy(), s=10)  # s controls the marker size
+
+    # Add labels and a title
+    plt.xlabel('max_probability_metric')
+    plt.ylabel('mi_scores')
+    plt.title('Comparison of max_probability_metric and mi_scores')
+
+    plt.savefig('comparison_plot3.png')
 
     #OOD experiment   
     # print("tensor_list_noisy_logits_50_merged.shape",torch.stack(tensor_list_noisy_logits_50_merged).shape)
