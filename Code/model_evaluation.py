@@ -56,24 +56,9 @@ def jsd_metric(tensor_list_logits):
 def max_probability_metric(tensor_list_logits):
 
   tensor_logits = torch.stack(tensor_list_logits)
-  print("tensor_logits.shape:",tensor_logits.shape)
   model_probabilities = torch.softmax(tensor_logits, dim = 2)
-  print("model_probabilities.shape:",model_probabilities.shape)
   average_probs = torch.mean(model_probabilities, dim = 0)
-  print("average_probs.shape:",average_probs.shape)
   max_p_values, _ = torch.max(average_probs, dim=1)
-  print("max_p_values.shape:",max_p_values.shape)
-  print("max_p_values:",max_p_values)
-  print("len(torch.unique(max_p_values)):",torch.unique(max_p_values))
-
-  unique_elements, counts = torch.unique(max_p_values, return_counts=True)
-
-  # Create a dictionary to store the counts for each unique element
-  element_counts = {}
-  for unique_element, count in zip(unique_elements, counts):
-      element_counts[unique_element.item()] = count.item()
-
-  print("Unique elements and their counts:", element_counts)
   
   return max_p_values
 
@@ -91,7 +76,6 @@ def entropy_metric(tensor_list_logits):
 def mi_metric(tensor_list_logits):
 
   expected_of_average = entropy_metric(tensor_list_logits)
-
   tensor_logits = torch.stack(tensor_list_logits)
   prob = torch.softmax(tensor_logits, dim = 2) #[50, 10000, 10]
   prob[prob == 0] = 1
@@ -102,6 +86,7 @@ def mi_metric(tensor_list_logits):
   return expected_of_average - average_entropy
 
 def set_seed(seed):
+   
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
     np.random.seed(seed)
@@ -110,31 +95,38 @@ def set_seed(seed):
 
 def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
 
-    from sklearn.metrics import precision_recall_curve, auc
     set_seed(42)
-
+ 
     entropy = entropy_metric(tensor_list_logits)
     noisy_entropy_50 = entropy_metric(tensor_list_noisy_logits_50)
-    
+ 
     jsd = jsd_metric(tensor_list_logits)
     noisy_jsd_50 = jsd_metric(tensor_list_noisy_logits_50)
-    
+ 
     acc = mean_accuracy(tensor_list_logits, test_labels)
     noisy_acc_50 = mean_accuracy(tensor_list_noisy_logits_50, test_labels)
- 
-    comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_logits), dim = 0), dim = 1), dim = 1) != test_labels)
-    noisy_comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_noisy_logits_50), dim = 0), dim = 1), dim = 1) != test_labels)
+
+    #OLD
+    # comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_logits), dim = 0), dim = 1), dim = 1) != test_labels)
+    # noisy_comparisson = (torch.argmax(torch.softmax(torch.mean(torch.stack(tensor_list_noisy_logits_50), dim = 0), dim = 1), dim = 1) != test_labels)
+
+    #New   
+    comparisson = (torch.argmax(torch.mean(torch.softmax(torch.stack(tensor_list_logits), dim = 2), dim = 0), dim = 1) != test_labels)
+    noisy_comparisson = (torch.argmax(torch.mean(torch.softmax(torch.stack(tensor_list_noisy_logits_50), dim = 2), dim = 0), dim = 1) != test_labels)
 
     def calculate_auroc(labels, uncertainty_scores):
+      
         fpr, tpr, _ = roc_curve(labels, uncertainty_scores)
         roc_auc = auc(fpr, tpr)
+      
         return roc_auc
 
     def calculate_aupr(labels, uncertainty_scores):
+      
         precision, recall, _ = precision_recall_curve(labels, uncertainty_scores)
         aupr = auc(recall, precision)
+      
         return aupr
-
 
     #Missclassification experiment 
     max_prob_scores = max_probability_metric(tensor_list_logits)
@@ -152,7 +144,6 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     mi_aupr = calculate_aupr(comparisson.cpu(), mi_scores.cpu())
     jsd_aupr = calculate_aupr(comparisson.cpu(), jsd_scores.cpu())
        
-
     tensor_list_noisy_logits_50_merged = torch.cat((torch.stack(tensor_list_noisy_logits_50),torch.stack(tensor_list_logits)), dim = 1)
     num_ones = torch.stack(tensor_list_noisy_logits_50).shape[1]
     num_zeros = torch.stack(tensor_list_logits).shape[1]
@@ -160,12 +151,10 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     zeros_tensor = torch.zeros(num_zeros)
     noisy_comparisson = torch.cat((ones_tensor, zeros_tensor), dim=0)
     
-
     # print(num_ones)
     # print(num_zeros)
     # print(noisy_comparisson.shape)
 
-    tensor_list_noisy_logits_50_merged = torch.unbind(tensor_list_noisy_logits_50_merged, dim = 0)
     # print(len(tensor_list_noisy_logits_50_merged))
 
     # Create the plot1
@@ -177,6 +166,12 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     plt.ylabel('jsd_metric')
     plt.title('Comparison of max_probability_metric and jsd_metric')
 
+    x_interval = (0.95, 1)  # Define your desired x-axis interval
+    y_interval = (0,0.02)  # Define your desired y-axis interval
+    plt.xlim(x_interval)
+    plt.ylim(y_interval)
+
+
     plt.savefig('comparison_plot1.png')
 
     # Create the plot2
@@ -187,7 +182,12 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     plt.xlabel('max_probability_metric')
     plt.ylabel('entropy_scores')
     plt.title('Comparison of max_probability_metric and entropy_scores')
-
+   
+    x_interval = (0.95, 1)  # Define your desired x-axis interval
+    y_interval = (0,0.02)  # Define your desired y-axis interval
+    plt.xlim(x_interval)
+    plt.ylim(y_interval)
+   
     plt.savefig('comparison_plot2.png')
 
     # Create the plot3
@@ -199,11 +199,17 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
     plt.ylabel('mi_scores')
     plt.title('Comparison of max_probability_metric and mi_scores')
 
+    x_interval = (0.95, 1)  # Define your desired x-axis interval
+    y_interval = (0,0.02)  # Define your desired y-axis interval
+    plt.xlim(x_interval)
+    plt.ylim(y_interval)
+
     plt.savefig('comparison_plot3.png')
 
     #OOD experiment   
     # print("tensor_list_noisy_logits_50_merged.shape",torch.stack(tensor_list_noisy_logits_50_merged).shape)
     # print("tensor_list_logits.shape",torch.stack(tensor_list_logits).shape)
+    tensor_list_noisy_logits_50_merged = torch.unbind(tensor_list_noisy_logits_50_merged, dim = 0)
     noisy_max_prob_scores = max_probability_metric(tensor_list_noisy_logits_50_merged)
     noisy_entropy_scores = entropy_metric(tensor_list_noisy_logits_50_merged)
     noisy_mi_scores = mi_metric(tensor_list_noisy_logits_50_merged)
@@ -543,4 +549,4 @@ if __name__ == '__main__':
     test_labels = torch.load(test_labels_path).to("cuda")
     tensor_list_noisy_logits_50 = torch.load(tensor_list_noisy_logits_50_path)
 
-    main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels)	
+    main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels.to("cuda"))	
