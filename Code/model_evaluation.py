@@ -493,6 +493,11 @@ def main(tensor_list_logits, tensor_list_noisy_logits_50, test_labels):
                         plt.ylabel('True Positive Rate')
                         plt.title('Receiver Operating Characteristic (ROC) Curve for FFNN-type SUNN')
                         plt.grid(True)
+                        plt.legend()
+                        plt.savefig('roc_curve.png')
+                        plt.show()
+
+                        # Print the AUC
                         print("ROC AUC:", roc_auc)
 
                         # Optionally, if you still want to calculate confusion matrix at a specific threshold
